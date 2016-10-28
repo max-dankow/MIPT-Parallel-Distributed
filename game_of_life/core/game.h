@@ -8,13 +8,13 @@ extern const int USE_RANDOM;
 
 typedef enum CellStatus {
     DEAD,
-	 ALIVE,
+    ALIVE,
     UNDEFINED
 } CellStatus;
 
 typedef struct GameField {
-	CellStatus* data;
-    size_t height, width;
+   CellStatus* data;
+   size_t height, width;
 } GameField;
 
 void init_field(GameField *field, size_t height, size_t width, int random_flag);
