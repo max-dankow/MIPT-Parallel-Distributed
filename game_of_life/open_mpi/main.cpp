@@ -114,7 +114,12 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     //    read_field(&initialField, "input.txt");
         // init_field(&initialField, gameHeight, gameWidth, USE_RANDOM);
         unsigned threadsNumber;
-        initialField = getProblem(argc, argv, stepsCount, threadsNumber);
+        try {
+            initialField = getProblem(argc, argv, stepsCount, threadsNumber);
+        } catch (std::invalid_argument &exception) {
+            std::cerr << exception.what() << '\n';
+            COMM_WORLD.Abort(-1);
+        }
         gameHeight = initialField.height;
         gameWidth = initialField.width;
 #ifdef SHOW_FIELD
