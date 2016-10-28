@@ -2,6 +2,7 @@
 #define utils_h
 
 #include <exception>
+#include <iostream>
 #include "game.h"
 
 const char* getNextWord(int argc, const char* argv[], size_t &index) {

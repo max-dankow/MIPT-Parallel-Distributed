@@ -6,7 +6,7 @@
 #include "../core/game.h"
 #include "../core/utils.h"
 
-#define SHOW_FIELD
+// #define SHOW_FIELD
 
 using std::cout;
 using namespace MPI;
@@ -111,8 +111,6 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     GameField initialField;
     unsigned gameHeight, gameWidth, stepsCount;
     if (rank == MAIN_RANK) {
-    //    read_field(&initialField, "input.txt");
-        // init_field(&initialField, gameHeight, gameWidth, USE_RANDOM);
         unsigned threadsNumber;
         try {
             initialField = getProblem(argc, argv, stepsCount, threadsNumber);
