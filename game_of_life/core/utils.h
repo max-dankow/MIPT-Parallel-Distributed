@@ -44,8 +44,9 @@ void read_args(int argc, const char* argv[],
                       << "       -np <process number>\n";
             return;
         }
-        if (i == 0) {
-            stepsCount = atoi(getNextWord(argc, argv, i));
+        if (i == 1) {
+            stepsCount = atoi(word);
+            continue;
         }
         std::cerr << "Unknown key: '" << word << "'\n";
     }
