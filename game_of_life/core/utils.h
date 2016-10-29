@@ -1,6 +1,7 @@
 #ifndef utils_h
 #define utils_h
 
+#include <string.h>
 #include <exception>
 #include <iostream>
 #include "game.h"

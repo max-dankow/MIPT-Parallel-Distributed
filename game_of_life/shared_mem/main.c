@@ -9,5 +9,5 @@
 int main(int argc, const char* argv[]) {
     gameOfLifeShared(argc, argv);
     gameOfLifeSharedAssist(argc, argv);
-	return 0;
+    return 0;
 }
