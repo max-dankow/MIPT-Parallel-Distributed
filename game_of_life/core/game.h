@@ -27,6 +27,7 @@ void print_field(const GameField * field);
 void fprint_field(FILE* file, const GameField * field);
 
 CellStatus process_cell(size_t index, const GameField *field);
+void update_cell(size_t index, const GameField *before, GameField *after);
 void process_range(const GameField *old_field, GameField *new_field, size_t start, size_t end);
 
 #endif /* game_h */

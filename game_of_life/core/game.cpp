@@ -117,7 +117,7 @@ CellStatus process_cell(size_t index, const GameField *field) {
             if (checkCell(row + i, col + j, field) == ALIVE) {
                 neighbors_count++;
             }
-        }       
+        }
     }
 
     // применяем правила игры
@@ -128,6 +128,10 @@ CellStatus process_cell(size_t index, const GameField *field) {
     }
 
     return new_CellStatus;
+}
+
+void update_cell(size_t index, const GameField *before, GameField *after) {
+    after->data[index] = process_cell(index, before);
 }
 
 void process_range(const GameField *old_field, GameField *new_field, size_t start, size_t end) {
