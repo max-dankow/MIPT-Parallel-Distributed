@@ -31,14 +31,16 @@ void* job(void *arguments) {
     return NULL;
 }
 
-void gameOfLifeShared(int argc, const char * argv[]) {
+void gameOfLifeShared(int argc, const char * argv[], bool show) {
     GameField fields[2];
     unsigned stepsCount, threadNumber;
     fields[0] = getProblem(argc, argv, stepsCount, threadNumber);
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
 
-    printf("GENETARION 0 (i'm the main)\n");
-    print_field(&fields[0]);
+    printf("[Basic]\n");
+    if (show) {
+        print_field(&fields[0]);
+    }
 
     if (threadNumber == 0) {
         return;
@@ -68,6 +70,9 @@ void gameOfLifeShared(int argc, const char * argv[]) {
     // последний поток доделывает остаток (из-за деления)
     tasks[threadNumber - 1].end = game_size;
 
+    time_t time_start, time_finish;
+    time(&time_start);
+
     for (size_t i = 0; i < threadNumber; ++i) {
         pthread_create(&threads[i], NULL, &job, &tasks[i]);
     }
@@ -75,11 +80,14 @@ void gameOfLifeShared(int argc, const char * argv[]) {
     for (size_t i = 0; i < threadNumber; ++i) {
         pthread_join(threads[i], NULL);
     }
+
+    time(&time_finish);
+    std::cout << time_finish - time_start << '\n';
     thread_barrier_destroy(&barrier);
 
-    // FILE* file = fopen("output.txt", "w");
-    print_field(result);
-    // fclose(file);
+    if (show) {
+        print_field(result);
+    }
 
     free(fields[0].data);
     free(fields[1].data);

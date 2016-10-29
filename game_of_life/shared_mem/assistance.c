@@ -75,8 +75,7 @@ void gameOfLifeSharedAssist(int argc, const char * argv[], bool show) {
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
     init_field(&fields[2], fields[0].height, fields[0].width, 0);
 
-    std::cout << "[Assistance] GENETARION 0 (i'm the main)\n"
-              << "threadNumber = " << threadNumber <<'\n';
+    std::cout << "[Assistance]\n";
     if (show) {
         print_field(&fields[0]);
     }
@@ -111,10 +110,9 @@ void gameOfLifeSharedAssist(int argc, const char * argv[], bool show) {
     // последний поток доделывает остаток (из-за деления)
     tasks[threadNumber - 1].end = game_size;
     tasks[(threadNumber + threadNumber - 2) % threadNumber].next_end = tasks[threadNumber - 1].end;
-    // 
-    // for (size_t i = 0; i < threadNumber; ++i) {
-    //     std::cout << tasks[i].start << '\t' << tasks[i].end << '\t' << tasks[i].next_end << '\n';
-    // }
+
+    time_t time_start, time_finish;
+    time(&time_start);
 
     for (size_t i = 0; i < threadNumber; ++i) {
         pthread_create(&threads[i], NULL, &job, &tasks[i]);
@@ -125,7 +123,9 @@ void gameOfLifeSharedAssist(int argc, const char * argv[], bool show) {
         pthread_join(threads[i], NULL);
         totalAssists += assists[i];
     }
-    thread_barrier_destroy(&barrier);
+
+    time(&time_finish);
+    std::cout << time_finish - time_start << '\n';
 
     if (show) {
         print_field(result);
@@ -136,4 +136,5 @@ void gameOfLifeSharedAssist(int argc, const char * argv[], bool show) {
 
     free(fields[0].data);
     free(fields[1].data);
+    thread_barrier_destroy(&barrier);
 }
