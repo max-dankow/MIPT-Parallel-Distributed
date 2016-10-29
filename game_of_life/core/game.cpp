@@ -1,5 +1,7 @@
-#include "game.h"
+#include <utility>
 #include <time.h>
+
+#include "game.h"
 
 const int USE_RANDOM = 1;
 
@@ -38,6 +40,17 @@ void move_field(GameField &&source, GameField &dest) {
     dest.width = source.width;
     free(dest.data);
     dest.data = source.data;
+}
+
+void transpose_field(GameField *field) {
+    GameField transposed;
+    init_field(&transposed, field->width, field->height, 0);
+    for (size_t row = 0; row < field->height; ++row) {
+        for (size_t col = 0; col < field->width; ++col) {
+            transposed.data[col * transposed.width + row] = field->data[row * field->width + col];
+        }
+    }
+    move_field(std::move(transposed), *field);
 }
 
 void read_field(GameField *field, const char* path) {

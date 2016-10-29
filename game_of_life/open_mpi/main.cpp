@@ -118,6 +118,9 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
             std::cerr << exception.what() << '\n';
             COMM_WORLD.Abort(-1);
         }
+        if (initialField.height < initialField.width) {
+            transpose_field(&initialField);
+        }
         gameHeight = initialField.height;
         gameWidth = initialField.width;
 #ifdef SHOW_FIELD

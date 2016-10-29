@@ -22,6 +22,7 @@ void destroy_field(GameField *field);
 
 void read_field(GameField *field, const char* path);
 void move_field(GameField &&source, GameField &dest);
+void transpose_field(GameField *field);
 
 void print_field(const GameField * field);
 void fprint_field(FILE* file, const GameField * field);
