@@ -4,7 +4,7 @@ SOURCE = $(GAME_CORE_PATH)/game.cpp $(GAME_CORE_PATH)/utils.c main.cpp
 HEADERS = $(GAME_CORE_PATH)/game.h $(GAME_CORE_PATH)/utils.h
 
 $(TARGET): $(HEADERS) $(SOURCE)
-	mpic++ -std=c++11 $(SOURCE) -o $(TARGET) -Wall
+	mpic++ $(SOURCE) -o $(TARGET) -Wall
 
 clean:
 	rm -rf *.o $(TARGET)

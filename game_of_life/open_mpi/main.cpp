@@ -46,8 +46,6 @@ void doJob(int rank, int process_number, GameField *myField, int steps_count) {
     int new_index = 1;
     int old_index = 0;
 
-    double startTime = Wtime();
-
     for (int i = 0; i <= steps_count; ++i) {
         // получаем любую границу
         Status status;
@@ -84,13 +82,11 @@ void doJob(int rank, int process_number, GameField *myField, int steps_count) {
         new_index = 1 - new_index;
         old_index = 1 - old_index;
     }
-    double endTime = Wtime();
-    cout << endTime - startTime << std::endl;
 
     // результат последнего поколения мог попасть в локальный массив,
     // поэтому нужно переместить его в результирующий массив
     if (new_index == 1) {
-        move_field(std::move(tmpField), *myField);
+        move_field(tmpField, *myField);
     } else {
         destroy_field(&tmpField);
     }
@@ -112,12 +108,12 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     unsigned gameHeight, gameWidth, stepsCount;
     if (rank == MAIN_RANK) {
         unsigned threadsNumber;
-        try {
+        //try {
             initialField = getProblem(argc, argv, stepsCount, threadsNumber);
-        } catch (std::invalid_argument &exception) {
-            std::cerr << exception.what() << '\n';
-            COMM_WORLD.Abort(-1);
-        }
+        //} catch (std::invalid_argument &exception) {
+        //    std::cerr << exception.what() << '\n';
+        //    COMM_WORLD.Abort(-1);
+        //}
         if (initialField.height < initialField.width) {
             transpose_field(&initialField);
         }
@@ -150,8 +146,12 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     COMM_WORLD.Scatterv(initialField.data, counts.data(), displacements.data(), INT,
                         myField.data + gameWidth, counts[rank], INT, MAIN_RANK);
 
+    double startTime = Wtime();
     doJob(rank, process_number, &myField, stepsCount);
-
+    double endTime = Wtime();
+    if (rank == MAIN_RANK) {
+        cout << endTime - startTime << std::endl;
+    }
     // Собираем результат
     COMM_WORLD.Gatherv(myField.data + gameWidth, counts[rank], INT,
                        initialField.data, counts.data(), displacements.data(), INT, MAIN_RANK);
@@ -163,8 +163,8 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
 #endif
 
     // подчищаем память
-    destroy_field(&initialField);
-    destroy_field(&myField);
+    //destroy_field(&initialField);
+    //destroy_field(&myField);
     Finalize();
 }
 

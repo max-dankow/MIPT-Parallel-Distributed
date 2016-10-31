@@ -7,7 +7,7 @@
 
 using std::cout;
 
-const bool show = true;
+const bool show = false;
 
 int main(int argc, const char* argv[]) {
     // получение задания

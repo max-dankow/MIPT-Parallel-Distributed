@@ -6,7 +6,7 @@
 const int USE_RANDOM = 1;
 
 size_t getIndex(size_t row, size_t col, const GameField *field) {
-        return row * field->width + col;
+    return row * field->width + col;
 }
 
 void init_field(GameField *field, size_t height, size_t width, int random_flag) {
@@ -35,7 +35,7 @@ void destroy_field(GameField *field) {
     free(field->data);
 }
 
-void move_field(GameField &&source, GameField &dest) {
+void move_field(GameField &source, GameField &dest) {
     dest.height = source.height;
     dest.width = source.width;
     free(dest.data);
@@ -50,7 +50,7 @@ void transpose_field(GameField *field) {
             transposed.data[col * transposed.width + row] = field->data[row * field->width + col];
         }
     }
-    move_field(std::move(transposed), *field);
+    move_field(transposed, *field);
 }
 
 void read_field(GameField *field, const char* path) {
@@ -73,6 +73,7 @@ void read_field(GameField *field, const char* path) {
             ++current;
         }
     }
+    fclose(input);
 }
 
 void print_field(const GameField * field) {
@@ -102,7 +103,7 @@ void fprint_field(FILE* file, const GameField * field) {
         for (size_t col = 0; col < field->width; ++col) {
             CellStatus CellStatus = field->data[index];
             index++;
-            fprintf(file, "%c ", (CellStatus == ALIVE)? '1' : '0');
+            fprintf(file, "%c ", (CellStatus == ALIVE) ? '1' : '0');
         }
         fprintf(file, "\n");
     }

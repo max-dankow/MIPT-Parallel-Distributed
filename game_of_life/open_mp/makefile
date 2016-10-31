@@ -4,7 +4,7 @@ SOURCE = $(GAME_CORE_PATH)/game.cpp $(GAME_CORE_PATH)/utils.c main.cpp
 HEADERS = $(GAME_CORE_PATH)/game.h $(GAME_CORE_PATH)/utils.h
 
 $(TARGET): $(HEADERS) $(SOURCE)
-	g++-6 -fopenmp -std=c++11 $(SOURCE) -o $(TARGET)
+	g++-6 -fopenmp $(SOURCE) -o $(TARGET) -Wall
 
 clean:
 	rm -rf *.o $(TARGET)

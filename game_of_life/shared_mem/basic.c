@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "basic.h"
 #include "barrier.h"
 #include "../core/game.h"

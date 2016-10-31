@@ -1,3 +1,6 @@
+#include <string.h>
+#include <stdexcept>
+#include <iostream>
 #include "utils.h"
 
 static const char* getNextWord(int argc, const char* argv[], size_t &index) {
