@@ -23,7 +23,7 @@ void read_args(int argc, const char* argv[],
     *width = 10;
     *path = NULL;
     size_t i = 0;
-    while (i < argc - 1) {
+    while (i + 1 < argc) {
         const char *word = get_next_word(argc, argv, &i);
         if (strcmp(word, "-np") == 0) {
             *threads = atoi(get_next_word(argc, argv, &i));

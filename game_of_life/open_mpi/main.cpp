@@ -86,7 +86,7 @@ void doJob(int rank, int process_number, GameField *myField, int steps_count) {
     // результат последнего поколения мог попасть в локальный массив,
     // поэтому нужно переместить его в результирующий массив
     if (new_index == 1) {
-        move_field(tmpField, *myField);
+        move_field(&tmpField, myField);
     } else {
         destroy_field(&tmpField);
     }
@@ -108,12 +108,7 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     unsigned gameHeight, gameWidth, stepsCount;
     if (rank == MAIN_RANK) {
         unsigned threadsNumber;
-        //try {
-            initialField = getProblem(argc, argv, stepsCount, threadsNumber);
-        //} catch (std::invalid_argument &exception) {
-        //    std::cerr << exception.what() << '\n';
-        //    COMM_WORLD.Abort(-1);
-        //}
+        initialField = getProblem(argc, argv, &stepsCount, &threadsNumber);
         if (initialField.height < initialField.width) {
             transpose_field(&initialField);
         }

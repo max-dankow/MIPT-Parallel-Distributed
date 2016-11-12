@@ -14,7 +14,7 @@ int main(int argc, const char* argv[]) {
     GameField fields[2];
     GameField *result = fields;
     unsigned stepsCount, threadNumber;
-    fields[0] = getProblem(argc, argv, stepsCount, threadNumber);
+    fields[0] = getProblem(argc, argv, &stepsCount, &threadNumber);
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
     size_t gameHeight = fields[0].height;
     size_t gameWidth = fields[0].width;
