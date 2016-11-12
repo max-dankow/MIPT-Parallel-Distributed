@@ -25,7 +25,7 @@ static void* job(void *arguments) {
     unsigned assistCount = 0;  // сколько суммарно ячеек мы помогли обработать
 
     for (int i = 0; i < task->steps_number; ++i) {
-        // обрабатываем свой участок, пока не дойдем до конца или не встетим соседа
+        // обрабатываем свой участок, пока не дойдем до конца или не всретим соседа
         size_t current_cell = task->start;
         while (current_cell != task->end && task->fields[next_i].data[current_cell] == UNDEFINED) {
             update_cell(current_cell, &task->fields[now_i], &task->fields[next_i]);

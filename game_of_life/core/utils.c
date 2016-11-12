@@ -37,7 +37,7 @@ void read_args(int argc, const char* argv[],
             continue;
         }
         if (strcmp(word, "--help") == 0) {
-            std::cout << "Usage: mpi_game <steps count>\n"
+            std::cout << "Usage: executable <steps count>\n"
                       << "Flags: -g <height> <width> - generate random field\n"
                       << "       -f <path to file> - read field from file\n"
                       << "       -np <process number>\n";
