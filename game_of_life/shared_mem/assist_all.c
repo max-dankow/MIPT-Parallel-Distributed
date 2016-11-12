@@ -1,20 +1,22 @@
-#include "assistance.h"
+#include "assist_all.h"
 #include "barrier.h"
 #include "../core/game.h"
 #include "../core/utils.h"
 
-typedef struct Task {
+static const int MAX_MISS_NUMBER = 7;
+
+typedef struct TaskAll {
     size_t start, end;
-    size_t next_end;
+    struct TaskAll* next_task;
     unsigned steps_number;
     unsigned *assistCount;
     GameField* fields;
     thread_barrier *barrier;
     GameField** result;
-} Task;
+} TaskAll;
 
 static void* job(void *arguments) {
-    Task* task = (Task *) arguments;
+    TaskAll* task = (TaskAll *) arguments;
     size_t gameSize = task->fields[0].height * task->fields[0].width;
     unsigned now_i = 0;
     unsigned next_i = 1;
@@ -30,22 +32,25 @@ static void* job(void *arguments) {
             current_cell++;
         }
 
-        // помогаем верхнему соседу
-        current_cell = (task->start + gameSize - 1) % gameSize;
-        while (task->fields[next_i].data[current_cell] == UNDEFINED) {
-            update_cell(current_cell, &task->fields[now_i], &task->fields[next_i]);
-            task->fields[undefined_i].data[current_cell] = UNDEFINED;
-            current_cell = (current_cell + gameSize - 1) % gameSize;
-            assistCount++;
-        }
+        // пытаемся всем помочь
+        int miss_count = 0;
+        TaskAll *current_task = task->next_task;
+        while (current_task != task && miss_count < MAX_MISS_NUMBER) {
+            // встаем в конец блока очередного соседа
+            current_cell = (current_task->end + gameSize - 1) % gameSize;
+            int current_assist = 0;
+            while (task->fields[next_i].data[current_cell] == UNDEFINED) {
+                // помогаем соседу считать и идем навстречу
+                update_cell(current_cell, &current_task->fields[now_i], &current_task->fields[next_i]);
+                current_task->fields[undefined_i].data[current_cell] = UNDEFINED;
+                current_cell = (current_cell + gameSize - 1) % gameSize;
+                assistCount++;
+                current_assist++;
+            }
 
-        // помогаем нижнему
-        current_cell = (task->next_end + gameSize - 1) % gameSize;
-        while (task->fields[next_i].data[current_cell] == UNDEFINED) {
-            update_cell(current_cell, &task->fields[now_i], &task->fields[next_i]);
-            task->fields[undefined_i].data[current_cell] = UNDEFINED;
-            current_cell = (current_cell + gameSize - 1) % gameSize;
-            assistCount++;
+            if (current_assist == 0) miss_count++;
+
+            current_task = current_task->next_task;
         }
 
         // ждем всех
@@ -61,7 +66,7 @@ static void* job(void *arguments) {
     return NULL;
 }
 
-void gameOfLifeSharedAssist(int argc, const char * argv[]) {
+void gameOfLifeSharedAssistAll(int argc, const char * argv[]) {
     // поля будет три копии: одна теущее поколение, одна следующее поколение
     // и одна будет заполняться UNDEFINED для использования через поколение
     GameField fields[3];
@@ -70,14 +75,14 @@ void gameOfLifeSharedAssist(int argc, const char * argv[]) {
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
     init_field(&fields[2], fields[0].height, fields[0].width, 0);
 
-    printf("[Assistance]\n");
+    printf("[Assist all]\n");
 
     if (thread_number == 0) {
         return;
     }
 
     pthread_t threads[thread_number];
-    Task tasks[thread_number];
+    TaskAll tasks[thread_number];
 
     thread_barrier barrier;
     thread_barrier_init(&barrier, thread_number);
@@ -91,7 +96,7 @@ void gameOfLifeSharedAssist(int argc, const char * argv[]) {
     for (size_t i = 0; i < thread_number; ++i) {
         tasks[i].start = start;
         tasks[i].end = start + range;
-        tasks[(i + thread_number - 1) % thread_number].next_end = tasks[i].end;
+        tasks[i].next_task = &tasks[(i + 1) % thread_number];
         start += range;
         tasks[i].steps_number = steps_count;
         tasks[i].fields = fields;
@@ -101,7 +106,6 @@ void gameOfLifeSharedAssist(int argc, const char * argv[]) {
     }
     // последний поток доделывает остаток (из-за деления)
     tasks[thread_number - 1].end = game_size;
-    tasks[(thread_number + thread_number - 2) % thread_number].next_end = tasks[thread_number - 1].end;
 
     time_t time_start, time_finish;
     time(&time_start);
