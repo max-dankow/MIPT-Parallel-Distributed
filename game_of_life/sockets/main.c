@@ -6,29 +6,21 @@
 #include "slave.h"
 
 const int MODE_MASTER = 0;
-const int MODE_SLAVE = 0;
+const int MODE_SLAVE = 1;
 
 const char** read_net_args(int argc, const char* argv[], int* mode, char** addr, int* port) {
     if (argc < 3) {
         fprintf(stderr, "Wrong arguments.\n");
         exit(EXIT_FAILURE);
     }
-    *mode = MODE_SLAVE;
 
     if (strcmp(argv[1], "-m") == 0) {
         *mode = MODE_MASTER;
-        if (argc < 3) {
-            fprintf(stderr, "Wrong arguments.\n");
-            exit(EXIT_FAILURE);
-        }
         sscanf(argv[2], "%d", port);
         return argv + 2;
     }
 
-    if (argc < 4) {
-        fprintf(stderr, "Wrong arguments.\n");
-        exit(EXIT_FAILURE);
-    }
+    *mode = MODE_SLAVE;
     sscanf(argv[1], "%d", port);
     *addr = argv[2];
     return argv + 2;
