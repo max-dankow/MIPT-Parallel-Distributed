@@ -4,7 +4,7 @@ SOURCE = $(GAME_CORE_PATH)/game.c $(GAME_CORE_PATH)/utils.c main.c barrier.c bas
 HEADERS = $(GAME_CORE_PATH)/game.h $(GAME_CORE_PATH)/utils.h barrier.h basic.h assistance.h assist_all.h
 
 $(TARGET): $(HEADERS) $(SOURCE)
-	gcc $(SOURCE) -o $(TARGET) -lpthread
+	gcc-6 -std=c99 $(SOURCE) -o $(TARGET) -lpthread
 
 clean:
 	rm -rf *.o $(TARGET)
