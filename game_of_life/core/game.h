@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern const int USE_NO_VALUE;
 extern const int USE_RANDOM;
+extern const int USE_UNDEFINED;
 
 typedef enum CellStatus {
     DEAD,
@@ -17,11 +19,11 @@ typedef struct GameField {
    size_t height, width;
 } GameField;
 
-void init_field(GameField *field, size_t height, size_t width, int random_flag);
+void init_field(GameField *field, size_t height, size_t width, int init_mode);
 void destroy_field(GameField *field);
 
 void read_field(GameField *field, const char* path);
-void move_field(GameField &source, GameField &dest);
+void move_field(GameField *source, GameField *dest);
 void transpose_field(GameField *field);
 
 void print_field(const GameField * field);

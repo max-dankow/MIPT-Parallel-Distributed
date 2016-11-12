@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "assistance.h"
 #include "barrier.h"
 #include "../core/game.h"
@@ -32,7 +30,7 @@ static void* job(void *arguments) {
             task->fields[undefined_i].data[current_cell] = UNDEFINED;
             current_cell++;
         }
-        bool metNeighbour = current_cell != task->end;
+        int metNeighbour = (current_cell != task->end)? 1 : 0;
 
         // помогаем верхнему соседу
         current_cell = (task->start + gameSize - 1) % gameSize;
@@ -44,7 +42,7 @@ static void* job(void *arguments) {
         }
 
         // если еще нужно, помогаем нижнему
-        if (!metNeighbour) {
+        if (metNeighbour == 0) {
             current_cell = (task->next_end + gameSize - 1) % gameSize;
             while (task->fields[next_i].data[current_cell] == UNDEFINED) {
                 update_cell(current_cell, &task->fields[now_i], &task->fields[next_i]);
@@ -68,73 +66,64 @@ static void* job(void *arguments) {
     return NULL;
 }
 
-void gameOfLifeSharedAssist(int argc, const char * argv[], bool show) {
+void gameOfLifeSharedAssist(int argc, const char * argv[]) {
     // поля будет три копии: одна теущее поколение, одна следующее поколение
     // и одна будет заполняться UNDEFINED для использования через поколение
     GameField fields[3];
-    unsigned stepsCount, threadNumber;
-    fields[0] = getProblem(argc, argv, stepsCount, threadNumber);
+    unsigned steps_count, thread_number;
+    fields[0] = getProblem(argc, argv, &steps_count, &thread_number);
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
     init_field(&fields[2], fields[0].height, fields[0].width, 0);
 
-    std::cout << "[Assistance]\n";
-    if (show) {
-        print_field(&fields[0]);
-    }
+    printf("[Assistance]\n");
 
-    if (threadNumber == 0) {
+    if (thread_number == 0) {
         return;
     }
 
-    pthread_t threads[threadNumber];
-    Task tasks[threadNumber];
+    pthread_t threads[thread_number];
+    Task tasks[thread_number];
 
     thread_barrier barrier;
-    thread_barrier_init(&barrier, threadNumber);
+    thread_barrier_init(&barrier, thread_number);
     GameField* result = (&fields[0]);
 
     size_t game_size = fields[0].height * fields[0].width;
-    unsigned assists[threadNumber];
+    unsigned assists[thread_number];
     // распределяем задачи
-    size_t range = game_size / threadNumber;
+    size_t range = game_size / thread_number;
     size_t start = 0;
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         tasks[i].start = start;
         tasks[i].end = start + range;
-        tasks[(i + threadNumber - 1) % threadNumber].next_end = tasks[i].end;
+        tasks[(i + thread_number - 1) % thread_number].next_end = tasks[i].end;
         start += range;
-        tasks[i].steps_number = stepsCount;
+        tasks[i].steps_number = steps_count;
         tasks[i].fields = fields;
         tasks[i].barrier = &barrier;
         tasks[i].result = &result;
         tasks[i].assistCount = &assists[i];
     }
     // последний поток доделывает остаток (из-за деления)
-    tasks[threadNumber - 1].end = game_size;
-    tasks[(threadNumber + threadNumber - 2) % threadNumber].next_end = tasks[threadNumber - 1].end;
+    tasks[thread_number - 1].end = game_size;
+    tasks[(thread_number + thread_number - 2) % thread_number].next_end = tasks[thread_number - 1].end;
 
     time_t time_start, time_finish;
     time(&time_start);
 
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         pthread_create(&threads[i], NULL, &job, &tasks[i]);
     }
 
     unsigned totalAssists = 0;
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         pthread_join(threads[i], NULL);
         totalAssists += assists[i];
     }
 
     time(&time_finish);
-    std::cout << time_finish - time_start << '\n';
-
-    if (show) {
-        print_field(result);
-    }
-    std::cout << "Total assists " << totalAssists << " ("
-              << float(totalAssists) / float(game_size * stepsCount) * 100
-              << "%)\n";
+    printf("Time %ld\n", time_finish - time_start);
+    printf("Total assists %d (%f %%)\n", totalAssists, (float)(totalAssists) / (float)(game_size * steps_count) * 100);
 
     free(fields[0].data);
     free(fields[1].data);

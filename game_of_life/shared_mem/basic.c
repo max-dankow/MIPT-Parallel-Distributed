@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "basic.h"
 #include "barrier.h"
 #include "../core/game.h"
@@ -33,63 +31,56 @@ void* job(void *arguments) {
     return NULL;
 }
 
-void gameOfLifeShared(int argc, const char * argv[], bool show) {
+void gameOfLifeShared(int argc, const char * argv[]) {
     GameField fields[2];
-    unsigned stepsCount, threadNumber;
-    fields[0] = getProblem(argc, argv, stepsCount, threadNumber);
+    unsigned steps_count, thread_number;
+    fields[0] = getProblem(argc, argv, &steps_count, &thread_number);
     init_field(&fields[1], fields[0].height, fields[0].width, 0);
 
     printf("[Basic]\n");
-    if (show) {
-        print_field(&fields[0]);
-    }
 
-    if (threadNumber == 0) {
+    if (thread_number == 0) {
         return;
     }
 
-    pthread_t threads[threadNumber];
-    Task tasks[threadNumber];
+    pthread_t threads[thread_number];
+    Task tasks[thread_number];
 
     thread_barrier barrier;
-    thread_barrier_init(&barrier, threadNumber);
+    thread_barrier_init(&barrier, thread_number);
     GameField* result = (&fields[0]);
 
     size_t game_size = fields[0].height * fields[0].width;
 
     // распределяем задачи
-    size_t range = game_size / threadNumber;
+    size_t range = game_size / thread_number;
     size_t start = 0;
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         tasks[i].start = start;
         tasks[i].end = start + range;
         start += range;
-        tasks[i].steps_number = stepsCount;
+        tasks[i].steps_number = steps_count;
         tasks[i].fields = fields;
         tasks[i].barrier = &barrier;
         tasks[i].result = &result;
     }
     // последний поток доделывает остаток (из-за деления)
-    tasks[threadNumber - 1].end = game_size;
+    tasks[thread_number - 1].end = game_size;
 
     time_t time_start, time_finish;
     time(&time_start);
 
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         pthread_create(&threads[i], NULL, &job, &tasks[i]);
     }
 
-    for (size_t i = 0; i < threadNumber; ++i) {
+    for (size_t i = 0; i < thread_number; ++i) {
         pthread_join(threads[i], NULL);
     }
 
     time(&time_finish);
-    std::cout << time_finish - time_start << '\n';
+    printf("Time %ld\n", time_finish - time_start);
     thread_barrier_destroy(&barrier);
-
-    if (show) {
-        print_field(result);
-    }
 
     free(fields[0].data);
     free(fields[1].data);

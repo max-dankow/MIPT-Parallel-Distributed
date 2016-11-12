@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
-#include <iostream>
 
 #include "basic.h"
 #include "assistance.h"

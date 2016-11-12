@@ -1,27 +1,29 @@
-#include <utility>
 #include <time.h>
-
 #include "game.h"
 
+const int USE_UNDEFINED = 0;
 const int USE_RANDOM = 1;
+const int USE_NO_VALUE = 2;
 
-size_t getIndex(size_t row, size_t col, const GameField *field) {
+size_t get_index(size_t row, size_t col, const GameField *field) {
     return row * field->width + col;
 }
 
-void init_field(GameField *field, size_t height, size_t width, int random_flag) {
-    if (random_flag == 1) {
+void init_field(GameField *field, size_t height, size_t width, int init_mode) {
+    if (init_mode == USE_RANDOM) {
         srand(time(NULL));
     }
+
     field->height = height;
     field->width = width;
-    size_t field_size = field->height * field->width;
+    size_t field_size = height * width;
     field->data = (CellStatus*) malloc(sizeof(CellStatus) * field_size);
 
     for (size_t index = 0; index < field_size; ++index) {
-        if (random_flag == 0) {
+        if (init_mode == USE_UNDEFINED) {
             field->data[index] = UNDEFINED;
-        } else {
+        }
+        if (init_mode == USE_RANDOM) {
             if (rand() % 2) {
                 field->data[index] = DEAD;
             } else {
@@ -36,22 +38,23 @@ void destroy_field(GameField *field) {
     field->data = NULL;
 }
 
-void move_field(GameField &source, GameField &dest) {
-    dest.height = source.height;
-    dest.width = source.width;
-    free(dest.data);
-    dest.data = source.data;
+void move_field(GameField *source, GameField *dest) {
+    dest->height = source->height;
+    dest->width = source->width;
+    destroy_field(dest);
+    dest->data = source->data;
+    source->data = NULL;
 }
 
 void transpose_field(GameField *field) {
     GameField transposed;
-    init_field(&transposed, field->width, field->height, 0);
+    init_field(&transposed, field->width, field->height, USE_NO_VALUE);
     for (size_t row = 0; row < field->height; ++row) {
         for (size_t col = 0; col < field->width; ++col) {
             transposed.data[col * transposed.width + row] = field->data[row * field->width + col];
         }
     }
-    move_field(transposed, *field);
+    move_field(&transposed, field);
 }
 
 void read_field(GameField *field, const char* path) {
@@ -70,7 +73,12 @@ void read_field(GameField *field, const char* path) {
         for (size_t col = 0; col < field->width; ++col) {
             int code;
             fscanf(input, "%d", &code);
-            field->data[current] = CellStatus(code);
+
+            CellStatus cell = UNDEFINED;
+            if (code == 0) cell = DEAD;
+            if (code == 1) cell = ALIVE;
+
+            field->data[current] = cell;
             ++current;
         }
     }
@@ -111,10 +119,10 @@ void fprint_field(FILE* file, const GameField * field) {
     fprintf(file, "\n");
 }
 
-CellStatus checkCell(int row, int col, const GameField *field) {
+CellStatus check_cell(int row, int col, const GameField *field) {
     row = (row + field->height) % field->height;
     col = (col + field->width) % field->width;
-    size_t index = getIndex(row, col, field);
+    size_t index = get_index(row, col, field);
     return field->data[index];
 }
 
@@ -129,14 +137,14 @@ CellStatus process_cell(size_t index, const GameField *field) {
             if (i == 0 && j == 0) {
                 continue;
             }
-            if (checkCell(row + i, col + j, field) == ALIVE) {
+            if (check_cell(row + i, col + j, field) == ALIVE) {
                 neighbors_count++;
             }
         }
     }
 
     // применяем правила игры
-    CellStatus current_CellStatus = field->data[getIndex(row, col, field)];
+    CellStatus current_CellStatus = field->data[get_index(row, col, field)];
     CellStatus new_CellStatus = DEAD;
     if ((current_CellStatus == DEAD && neighbors_count == 3) || (current_CellStatus == ALIVE && (neighbors_count == 2 || neighbors_count == 3))) {
         new_CellStatus = ALIVE;
