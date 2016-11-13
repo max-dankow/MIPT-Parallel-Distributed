@@ -2,20 +2,46 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-
 #include "master.h"
 #include "../core/game.h"
 #include "../core/utils.h"
+#include "socket_utils.h"
 
-int init_datagram_socket(int port) {
-    // создаем сокет
-    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socket_fd < 0) {
+// int init_datagram_socket(int port) {
+//     // создаем сокет
+//     int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+//     if (socket_fd < 0) {
+//         perror("Can't create socket.");
+//         exit(EXIT_FAILURE);
+//     }
+//
+//     // настраиваем наш адрес
+//     struct sockaddr_in addr;
+//     bzero(&addr, sizeof(addr));
+//     addr.sin_family = AF_INET;
+//     addr.sin_port = htons(port);
+//     addr.sin_addr.s_addr = htonl(INADDR_ANY);
+//     // связываение сокета
+//     if (bind(socket_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+//         perror("Bind");
+//         close(socket_fd);
+//         exit(EXIT_FAILURE);
+//     }
+//     return socket_fd;
+// }
+
+
+void close_all_sockets(Slave slaves[], size_t threads_number) {
+    for (size_t i = 0; i < threads_number; ++i) {
+        close(slaves[i].tcp_socket);
+    }
+}
+
+void find_slaves(Slave slaves[], size_t slaves_number, int port) {
+    printf("Waiting for %zu slaves\n", slaves_number);
+    // настраиваем соединение для приема рабочих (TCP)
+    int listen_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (listen_socket < 0) {
         perror("Can't create socket.");
         exit(EXIT_FAILURE);
     }
@@ -27,18 +53,74 @@ int init_datagram_socket(int port) {
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     // связываение сокета
-    if (bind(socket_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (bind(listen_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("Bind");
-        close(socket_fd);
+        close(listen_socket);
         exit(EXIT_FAILURE);
     }
-    return socket_fd;
+    // устанавливаем сокет в режим приема новых соединений
+    if (listen(listen_socket, slaves_number) < 0) {
+        perror("listen");
+        close(listen_socket);
+        exit(EXIT_FAILURE);
+    }
+
+    // Фаза ожидания нужного числа рабочих
+    for (size_t i = 0; i < slaves_number; ++i) {
+        slaves[i].tcp_socket = accept(listen_socket, NULL, NULL);
+        if (slaves[i].tcp_socket < 0) {
+            perror("accept");
+            close(listen_socket);
+            exit(EXIT_FAILURE);
+        }
+        printf("already_connected %zu of %zu\n", i + 1, slaves_number);
+
+        // рабочий должен прислать длину адреса и сам адрес своего UDP сокета
+        // вносим его в список рабочих, запомнив адрес его UDP сокета
+        int new_socket = slaves[i].tcp_socket;
+        if (read(new_socket, &slaves[i].addr_size, sizeof(socklen_t)) != sizeof(socklen_t)) {
+            perror("addr_len expected");
+            close(listen_socket);
+            close_all_sockets(slaves, i);
+            exit(EXIT_FAILURE);
+        }
+
+        if (receive_message((char *) &slaves[i].addr, new_socket, slaves[i].addr_size) < 0) {
+            perror("sockaddr expected");
+            close(listen_socket);
+            close_all_sockets(slaves, i);
+            exit(EXIT_FAILURE);
+        }
+    }
+    // теперь не ожидается новых подключений и можно закрыть сокет
+    close(listen_socket);
 }
 
-typedef struct Slave {
-    struct sockaddr_in addr;
-    socklen_t addr_size;
-} Slave;
+void scatter_tasks(Slave slaves[], GameField *field, size_t threads_number) {
+    size_t height = field->height;
+    size_t width = field->width;
+    size_t game_size = height * width;
+    size_t piece_height = height / threads_number;
+    size_t piece_size = piece_height * width;
+    for (size_t i = 0; i < threads_number; ++i) {
+        // размер подполя для последнего отличается из-за некратности
+        size_t actual_size = (i + 1 < threads_number) ? piece_size : (game_size - i * piece_size);
+        size_t actual_height = actual_size / width;
+
+        // отсылаем размер последующего куска данных
+        write(slaves[i].tcp_socket, &actual_height, sizeof(actual_height));
+        write(slaves[i].tcp_socket, &width, sizeof(width));
+
+        // отсылаем подполе
+        if (send_message((char *) &(field->data[i * piece_size]),
+                         slaves[i].tcp_socket,
+                         actual_size * sizeof(CellStatus)) < 0) {
+            perror("Send");
+            close_all_sockets(slaves, threads_number);
+            exit(EXIT_FAILURE);
+        }
+    }
+}
 
 void run_master(int port, int argc, const char * argv[]) {
     printf("Master started. Port is %d!\n", port);
@@ -46,43 +128,19 @@ void run_master(int port, int argc, const char * argv[]) {
     // пока рабочие запускаются и подклачаются, получим задачу
     unsigned steps_count, threads_number;
     GameField field = getProblem(argc, argv, &steps_count, &threads_number);
+    if (threads_number <= 2) {
+        perror("To few processes");
+        exit(EXIT_FAILURE);
+    }
     if (field.height < field.width) {
         transpose_field(&field);
     }
-
-    // настраиваем соединение для рабочих
-    int socket_fd = init_datagram_socket(port);
-
-    // Фаза ожидания нужного числа рабочих
+    print_field(&field);
     Slave slaves[threads_number];
-    size_t already_connected = 0;
-    for (size_t i = 0; i < threads_number; ++i) {
-        char message[255];
-        // получаем заявление от рабочего
-        recvfrom(socket_fd, message, 11, 0,
-                 (struct sockaddr *) &slaves[already_connected].addr,
-                 &slaves[already_connected].addr_size);
-                 
-        already_connected++;
-        printf("Already connected: %zu\n", already_connected);
-    }
+    find_slaves(slaves, threads_number, port);
+    printf("Slaves have been found\n");
 
-
-
-    close(socket_fd);
+    scatter_tasks(slaves, &field, threads_number);
+    printf("Tasks have been scattered\n");
     printf("Server terminated.\n");
 }
-//
-// int receive_message(char* text, int fd, size_t length)
-// {
-//     size_t current = 0;
-//     while (current < length)
-//     {
-//         int code = recv(fd, text + current, length - current, 0);
-//         if (code == -1)
-//         {
-//             return -1;
-//         }
-//         current += code;
-//     }
-// }
