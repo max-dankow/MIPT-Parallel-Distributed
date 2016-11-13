@@ -114,9 +114,6 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
         }
         gameHeight = initialField.height;
         gameWidth = initialField.width;
-#ifdef SHOW_FIELD
-        print_field(&initialField);
-#endif
         cout << "START!\n";
     }
 
@@ -150,12 +147,6 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     // Собираем результат
     COMM_WORLD.Gatherv(myField.data + gameWidth, counts[rank], INT,
                        initialField.data, counts.data(), displacements.data(), INT, MAIN_RANK);
-#ifdef SHOW_FIELD
-    if (rank == MAIN_RANK) {
-        cout << "RESULT IS:\n";
-        print_field(&initialField);
-    }
-#endif
 
     // подчищаем память
     //destroy_field(&initialField);

@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -7,38 +9,67 @@
 #include <unistd.h>
 
 #include "master.h"
+#include "../core/game.h"
+#include "../core/utils.h"
 
-int init_socket_for_connection(int port) {
-    int listen_socket = -1;
-
+int init_datagram_socket(int port) {
     // создаем сокет
-    listen_socket = socket(AF_INET, SOCK_DGRAM, 0); // время выбрать протокол!!!!!!!!!!!!!!!!!!!!!!
-    if (listen_socket == -1) {
+    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socket_fd < 0) {
         perror("Can't create socket.");
         exit(EXIT_FAILURE);
     }
 
-    // связываение сокета
+    // настраиваем наш адрес
     struct sockaddr_in addr;
+    bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(listen_socket, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
+    // связываение сокета
+    if (bind(socket_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("Bind");
+        close(socket_fd);
         exit(EXIT_FAILURE);
     }
-    return listen_socket;
+    return socket_fd;
 }
 
-void run_master(int port) {
+typedef struct Slave {
+    struct sockaddr_in addr;
+    socklen_t addr_size;
+} Slave;
+
+void run_master(int port, int argc, const char * argv[]) {
     printf("Master started. Port is %d!\n", port);
 
-    // настраиваем соединение для приема рабочих
-    int listen_socket = init_socket_for_connection(port);
-    char message[255];
-    recv(listen_socket, message, 11, 0);
-    printf("I've received : %s\n", message);
-    close(listen_socket);
+    // пока рабочие запускаются и подклачаются, получим задачу
+    unsigned steps_count, threads_number;
+    GameField field = getProblem(argc, argv, &steps_count, &threads_number);
+    if (field.height < field.width) {
+        transpose_field(&field);
+    }
+
+    // настраиваем соединение для рабочих
+    int socket_fd = init_datagram_socket(port);
+
+    // Фаза ожидания нужного числа рабочих
+    Slave slaves[threads_number];
+    size_t already_connected = 0;
+    for (size_t i = 0; i < threads_number; ++i) {
+        char message[255];
+        // получаем заявление от рабочего
+        recvfrom(socket_fd, message, 11, 0,
+                 (struct sockaddr *) &slaves[already_connected].addr,
+                 &slaves[already_connected].addr_size);
+                 
+        already_connected++;
+        printf("Already connected: %zu\n", already_connected);
+    }
+
+
+
+    close(socket_fd);
     printf("Server terminated.\n");
 }
 //

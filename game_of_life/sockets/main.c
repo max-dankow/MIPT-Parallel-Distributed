@@ -33,7 +33,7 @@ int main(int argc, const char* argv[]) {
     char* addr;
     argv = read_net_args(argc, argv, &mode, &addr, &port);
     if (mode == MODE_MASTER) {
-        run_master(port);
+        run_master(port, argc - 2, argv);
     } else {
         run_slave(port, addr);
     }
