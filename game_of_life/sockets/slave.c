@@ -5,11 +5,75 @@
 #include "slave.h"
 #include "socket_utils.h"
 
+void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id, size_t threads_number) {
+    // ТУТ НУЖЕН ПРАВИЛЬНЫЙ ПОРЯДОК: при нечетном числе исполнителей нулевой и последний должны изменить свое поведение
+    if (my_id % 2 == 0) {
+        // В этом случае я сначала жду подключения. Сначала снизу, затем сверху.
+        neighbours[1].socket = accept(listen_socket, NULL, NULL);
+        printf("First accept %d\n", neighbours[1].socket);
+        if (threads_number % 2 == 1) {
+            if (my_id == 0) {
+                // В этом случае 0ой вместо ожидания верхнего должен подключиться к нему.
+                neighbours[0].socket = socket(AF_INET, SOCK_STREAM, 0);
+                if (connect(neighbours[0].socket,
+                            (struct sockaddr *) &neighbours[0].listen_addr.addr,
+                            neighbours[0].listen_addr.addr_size) < 0) {
+                    perror("connect");
+                    close(listen_socket);
+                    close(neighbours[0].socket);
+                    close(neighbours[1].socket);
+                    exit(EXIT_FAILURE);
+                }
+                printf("EXTRA connect in OK\n");
+            }
+            if (my_id == threads_number - 1) {
+                // В этом случае последний получил сначала подкличение от верхнего, а нужно наоборот.
+                neighbours[0].socket = neighbours[1].socket;
+                // ожидаем подключения от 0го
+                neighbours[1].socket = accept(listen_socket, NULL, NULL);
+                if (neighbours[1].socket < 0) {
+                    perror("accept");
+                    close(listen_socket);
+                    close(neighbours[0].socket);
+                    close(neighbours[1].socket);
+                    exit(EXIT_FAILURE);
+                }
+                printf("EXTRA accept %d\n", neighbours[1].socket);
+            }
+        } else {
+            neighbours[0].socket = accept(listen_socket, NULL, NULL);
+            printf("Second accept %d\n", neighbours[0].socket);
+        }
+        if (neighbours[0].socket < 0 || neighbours[1].socket < 0) {
+            perror("accept");
+            close(listen_socket);
+            close(neighbours[0].socket);
+            close(neighbours[1].socket);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        // В этом случае мы инициируем подключение. Сначала с верхним, потом с нижним.
+        for (size_t i = 0; i < 2; ++i) {
+            neighbours[i].socket = socket(AF_INET, SOCK_STREAM, 0);
+            if (connect(neighbours[i].socket,
+                        (struct sockaddr *) &neighbours[i].listen_addr.addr,
+                        neighbours[i].listen_addr.addr_size) < 0) {
+                perror("connect");
+                close(listen_socket);
+                close(neighbours[0].socket);
+                close(neighbours[1].socket);
+                exit(EXIT_FAILURE);
+            }
+            printf("%zuth connect in OK\n", i);
+        }
+    }
+}
+
 void run_slave(int port, char* master_addr_char) {
     printf("Slave started.\n");
 
     // создаем сокет
-    int master_socket = socket(AF_INET, SOCK_STREAM, 0);  // сокет для надежного общения с матером
+    int master_socket = socket(AF_INET, SOCK_STREAM, 0);  // сокет для надежного общения с мастером
     int listen_socket = socket(AF_INET, SOCK_STREAM, 0);  // сокет для обмена границами
     if (listen_socket < 0 || master_socket < 0) {
         perror("socket");
@@ -38,10 +102,6 @@ void run_slave(int port, char* master_addr_char) {
         close(master_socket);
         exit(EXIT_FAILURE);
     }
-    // узнаем наш действительный адрес, чтобы сообщить мастеру
-    getsockname(listen_socket, (struct sockaddr *) &addr.addr, &addr.addr_size);
-    printf("port %d, %d, %d(AF = %d)\n", addr.addr.sin_port,
-        addr.addr.sin_addr.s_addr, addr.addr.sin_family, AF_INET);
 
     // настраиваем сокет для общения с мастером
     struct sockaddr_in master_addr;
@@ -63,46 +123,47 @@ void run_slave(int port, char* master_addr_char) {
         exit(EXIT_FAILURE);
     }
     printf("Connected. Sending listen_socket addr\n");
-    write(master_socket, &addr, sizeof(Address));
 
-    printf("I've sent to my master\n");
-    //
-    // GameField my_field;
-    // size_t height, width, steps_count;
-    // read(master_socket, &steps_count, sizeof(steps_count));
-    // read(master_socket, &height, sizeof(height));
-    // read(master_socket, &width, sizeof(width));
-    // init_field(&my_field, height + 2, width, USE_NO_VALUE);
-    // read(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
-    // print_field(&my_field);
-    // printf("Steps number %zu\n", steps_count);
-    //
-    // // получаем адреса соседей
-    // Slave neighbours[2];
-    // read(master_socket, &neighbours[0], sizeof(Slave));
-    // read(master_socket, &neighbours[1], sizeof(Slave));
-    // sendto(socket_fd, "Hello", 6, 0, (struct sockaddr *) &neighbours[0].addr, neighbours[0].addr_size);
-    // sendto(socket_fd, "Hello", 6, 0, (struct sockaddr *) &neighbours[1].addr, neighbours[1].addr_size);
-    // // if (
-    // //     ||  < 0) {
-    // //     perror("Can't write to neighbours");
-    // //     close(socket_fd);
-    // //     exit(EXIT_FAILURE);
-    // // }
-    //
-    // char line[1000];
-    // recvfrom(socket_fd, &line, 1000, 0, NULL, NULL);
-    // printf("from sosed 0 : %s\n", line);
-    //
-    // bzero(&line, 10);
-    // recvfrom(socket_fd, &line, 1000, 0, NULL, NULL);
-    // printf("from sosed 1 : %s\n", line);
-    //
-    //
-    //
-    // // if (neighbours[0].addr_size == sizeof(my_addr) && bcmp((char *) &neighbours[0].addr, (char *) &my_addr, sizeof(my_addr)) == 0) {
-    // //     printf("OK, addr is correct\n");
-    // // }
+    // узнаем наш действительный адрес, чтобы сообщить мастеру
+    getsockname(listen_socket, (struct sockaddr *) &addr.addr, &addr.addr_size);
+    printf("port %d, %d, %d(AF = %d)\n", addr.addr.sin_port,
+        addr.addr.sin_addr.s_addr, addr.addr.sin_family, AF_INET);
+    write(master_socket, &addr, sizeof(Address));
+    printf("I've sent address to my master\n");
+
+    // получаем задание от мастера
+    GameField my_field;
+    size_t height, width, steps_count, my_id, threads_number;
+    read(master_socket, &my_id, sizeof(my_id));
+    read(master_socket, &threads_number, sizeof(threads_number));
+    read(master_socket, &steps_count, sizeof(steps_count));
+    read(master_socket, &height, sizeof(height));
+    read(master_socket, &width, sizeof(width));
+    init_field(&my_field, height + 2, width, USE_NO_VALUE);  // + по одной строке на верхнего и нижнего соседа
+    read(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
+    print_field(&my_field);
+    printf("My ID=%zu(of %zu). Steps number %zu\n", my_id, threads_number, steps_count);
+
+    // получаем адреса соседей
+    Slave neighbours[2];
+    read(master_socket, &neighbours[0].listen_addr, sizeof(Address));
+    read(master_socket, &neighbours[1].listen_addr, sizeof(Address));
+
+    // устанавливаем соединение с соседями
+    connect_with_neighbours(neighbours, listen_socket, my_id, threads_number);
+
+    // проверка связи
+    char msg[2][100];
+    sprintf(msg[0], "For %zu from %zu with love of TCP", (my_id + threads_number - 1) % threads_number, my_id);
+    sprintf(msg[1], "For %zu from %zu with love of TCP", (my_id + 1) % threads_number, my_id);
+    for (size_t i = 0; i < 2; ++i) {
+        send_message(neighbours[i].socket, msg[i], strlen(msg[i]) + 1);
+    }
+    char line[2][100];
+    for (size_t i = 0; i < 2; ++i) {
+        receive_message(neighbours[i].socket, line[i], strlen(msg[i]) + 1);
+        printf("%s\n", line[i]);
+    }
 
     close(listen_socket);
     close(master_socket);

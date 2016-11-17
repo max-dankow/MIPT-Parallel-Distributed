@@ -15,7 +15,7 @@ typedef struct Address {
 } Address;
 
 typedef struct Slave {
-    Address listen_addrs;  // адреса сокета прослушивающего сокета рабочего
+    Address listen_addr;  // адреса сокета прослушивающего сокета рабочего
     int socket;  // сокет, по которому мастер общается с рабочим
 } Slave;
 
