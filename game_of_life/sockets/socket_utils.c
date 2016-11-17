@@ -1,8 +1,6 @@
 #include "socket_utils.h"
-//
-// const size_t MAX_BOARDER_SIZE = 100000;
-//
-int send_message(char* text, int fd, size_t length) {
+
+int send_message(int fd, char* text, size_t length) {
     size_t current = 0;
     while (current < length) {
         int code = send(fd, text + current, length - current, 0);
@@ -14,7 +12,7 @@ int send_message(char* text, int fd, size_t length) {
     return length;
 }
 
-int receive_message(char* text, int fd, size_t length) {
+int receive_message(int fd, char* text, size_t length) {
     size_t current = 0;
     while (current < length) {
         int code = recv(fd, text + current, length - current, 0);

@@ -33,7 +33,7 @@
 
 void close_all_sockets(Slave slaves[], size_t threads_number) {
     for (size_t i = 0; i < threads_number; ++i) {
-        close(slaves[i].tcp_socket);
+        close(slaves[i].socket);
     }
 }
 
@@ -67,26 +67,18 @@ void find_slaves(Slave slaves[], size_t slaves_number, int port) {
 
     // Фаза ожидания нужного числа рабочих
     for (size_t i = 0; i < slaves_number; ++i) {
-        slaves[i].tcp_socket = accept(listen_socket, NULL, NULL);
-        if (slaves[i].tcp_socket < 0) {
+        slaves[i].socket = accept(listen_socket, NULL, NULL);
+        if (slaves[i].socket < 0) {
             perror("accept");
             close(listen_socket);
             exit(EXIT_FAILURE);
         }
         printf("already_connected %zu of %zu\n", i + 1, slaves_number);
 
-        // рабочий должен прислать длину адреса и сам адрес своего UDP сокета
-        // вносим его в список рабочих, запомнив адрес его UDP сокета
-        int new_socket = slaves[i].tcp_socket;
-        if (read(new_socket, &slaves[i].addr_size, sizeof(socklen_t)) != sizeof(socklen_t)) {
-            perror("addr_len expected");
-            close(listen_socket);
-            close_all_sockets(slaves, i);
-            exit(EXIT_FAILURE);
-        }
-
-        if (receive_message((char *) &slaves[i].addr, new_socket, slaves[i].addr_size) < 0) {
-            perror("sockaddr expected");
+        // рабочий должен прислать адрес его сокета для приема соединений с соседями
+        // внесем его в список рабочих, запомним этот адрес
+        if (read(slaves[i].socket, &slaves[i].listen_addrs, sizeof(Address)) != sizeof(Address)) {
+            perror("Address expected");
             close(listen_socket);
             close_all_sockets(slaves, i);
             exit(EXIT_FAILURE);
@@ -95,43 +87,43 @@ void find_slaves(Slave slaves[], size_t slaves_number, int port) {
     // теперь не ожидается новых подключений и можно закрыть сокет
     close(listen_socket);
 }
-
-void scatter_tasks(Slave slaves[], GameField *field, size_t threads_number, size_t steps_count) {
-    size_t height = field->height;
-    size_t width = field->width;
-    size_t game_size = height * width;
-    size_t piece_height = height / threads_number;
-    size_t piece_size = piece_height * width;
-    for (size_t i = 0; i < threads_number; ++i) {
-        // отсылаем число шагов
-        write(slaves[i].tcp_socket, &steps_count, sizeof(steps_count));
-        // размер подполя для последнего отличается из-за некратности
-        size_t actual_size = (i + 1 < threads_number) ? piece_size : (game_size - i * piece_size);
-        size_t actual_height = actual_size / width;
-
-        // отсылаем размер последующего куска данных
-        write(slaves[i].tcp_socket, &actual_height, sizeof(actual_height));
-        write(slaves[i].tcp_socket, &width, sizeof(width));
-
-        // отсылаем подполе
-        if (send_message((char *) &(field->data[i * piece_size]),
-                         slaves[i].tcp_socket,
-                         actual_size * sizeof(CellStatus)) < 0) {
-            perror("Send");
-            close_all_sockets(slaves, threads_number);
-            exit(EXIT_FAILURE);
-        }
-        // остылаем адреса соседей (поле сокет окажется невалидным, но оно и не нужно)
-        size_t neighbour_left = (i + threads_number - 1) % threads_number;
-        size_t neighbour_right = (i + 1) % threads_number;
-        if (send_message((char *) &(slaves[neighbour_left]), slaves[i].tcp_socket, sizeof(slaves[neighbour_left])) < 0
-            || send_message((char *) &(slaves[neighbour_right]), slaves[i].tcp_socket, sizeof(slaves[neighbour_right])) < 0) {
-            perror("Send");
-            close_all_sockets(slaves, threads_number);
-            exit(EXIT_FAILURE);
-        }
-    }
-}
+//
+// void scatter_tasks(Slave slaves[], GameField *field, size_t threads_number, size_t steps_count) {
+//     size_t height = field->height;
+//     size_t width = field->width;
+//     size_t game_size = height * width;
+//     size_t piece_height = height / threads_number;
+//     size_t piece_size = piece_height * width;
+//     for (size_t i = 0; i < threads_number; ++i) {
+//         // отсылаем число шагов
+//         write(slaves[i].tcp_socket, &steps_count, sizeof(steps_count));
+//         // размер подполя для последнего отличается из-за некратности
+//         size_t actual_size = (i + 1 < threads_number) ? piece_size : (game_size - i * piece_size);
+//         size_t actual_height = actual_size / width;
+//
+//         // отсылаем размер последующего куска данных
+//         write(slaves[i].tcp_socket, &actual_height, sizeof(actual_height));
+//         write(slaves[i].tcp_socket, &width, sizeof(width));
+//
+//         // отсылаем подполе
+//         if (send_message((char *) &(field->data[i * piece_size]),
+//                          slaves[i].tcp_socket,
+//                          actual_size * sizeof(CellStatus)) < 0) {
+//             perror("Send");
+//             close_all_sockets(slaves, threads_number);
+//             exit(EXIT_FAILURE);
+//         }
+//         // остылаем адреса соседей (поле сокет окажется невалидным, но оно и не нужно)
+//         size_t neighbour_left = (i + threads_number - 1) % threads_number;
+//         size_t neighbour_right = (i + 1) % threads_number;
+//         if (send_message((char *) &(slaves[neighbour_left]), slaves[i].tcp_socket, sizeof(slaves[neighbour_left])) < 0
+//             || send_message((char *) &(slaves[neighbour_right]), slaves[i].tcp_socket, sizeof(slaves[neighbour_right])) < 0) {
+//             perror("Send");
+//             close_all_sockets(slaves, threads_number);
+//             exit(EXIT_FAILURE);
+//         }
+//     }
+// }
 
 void run_master(int port, int argc, const char * argv[]) {
     printf("Master started. Port is %d!\n", port);
@@ -151,7 +143,7 @@ void run_master(int port, int argc, const char * argv[]) {
     find_slaves(slaves, threads_number, port);
     printf("Slaves have been found\n");
 
-    scatter_tasks(slaves, &field, threads_number, steps_count);
-    printf("Tasks have been scattered\n");
+    // scatter_tasks(slaves, &field, threads_number, steps_count);
+    // printf("Tasks have been scattered\n");
     printf("Server terminated.\n");
 }

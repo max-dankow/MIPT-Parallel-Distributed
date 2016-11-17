@@ -9,15 +9,17 @@
 
 #include "../core/game.h"
 
-// extern const size_t MAX_BOARDER_SIZE;
-
-typedef struct Slave {
+typedef struct Address {
     struct sockaddr_in addr;
     socklen_t addr_size;
-    int tcp_socket;
+} Address;
+
+typedef struct Slave {
+    Address listen_addrs;  // адреса сокета прослушивающего сокета рабочего
+    int socket;  // сокет, по которому мастер общается с рабочим
 } Slave;
 
-int send_message(char* text, int fd, size_t length);
-int receive_message(char* text, int fd, size_t length);
+int send_message(int fd, char* text, size_t length);
+int receive_message(int fd, char* text, size_t length);
 
 #endif /* socket_utils_h */
