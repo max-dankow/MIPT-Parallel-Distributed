@@ -105,7 +105,8 @@ void print_field(const GameField * field) {
     printf("\n");
 }
 
-void fprint_field(FILE* file, const GameField * field) {
+void fprint_field(char* file_name, const GameField * field) {
+    FILE *file = fopen(file_name, "w");
     size_t index = 0;
     fprintf(file, "%zu %zu\n", field->height, field->width);
     for (size_t row = 0; row < field->height; ++row) {
@@ -117,6 +118,7 @@ void fprint_field(FILE* file, const GameField * field) {
         fprintf(file, "\n");
     }
     fprintf(file, "\n");
+    fclose(file);
 }
 
 CellStatus check_cell(int row, int col, const GameField *field) {

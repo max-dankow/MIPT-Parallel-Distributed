@@ -27,7 +27,7 @@ void move_field(GameField *source, GameField *dest);
 void transpose_field(GameField *field);
 
 void print_field(const GameField * field);
-void fprint_field(FILE* file, const GameField * field);
+void fprint_field(char* file_name, const GameField * field);
 
 CellStatus process_cell(size_t index, const GameField *field);
 void update_cell(size_t index, const GameField *before, GameField *after);
