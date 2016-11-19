@@ -69,6 +69,69 @@ void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id
     }
 }
 
+void do_job(int my_id, int process_number, Slave neighbours[2], GameField *field, int steps_count) {
+    size_t size = field->height * field->width;
+    size_t width = field->width;
+    size_t border_raw_size = sizeof(CellStatus) * width;
+    GameField tmp_field;
+    init_field(&tmp_field, field->height, field->width, USE_UNDEFINED);
+
+    GameField* work_fields[2] = {field, &tmp_field};  // рабочие поля, между которыми будем переключаться
+
+    // индексы начала и конца обоих границ нашей части поля
+    int my_borders[2][2] = {{width           , width * 2   },  // верхняя граница
+                            {size - width * 2, size - width}};  // нижняя граница
+
+    // адреса наших границ в памяти в обоих массивах
+    CellStatus *my_borders_addr[2][2] = {{field->data    + my_borders[0][0], field->data    + my_borders[1][0]},
+                                         {tmp_field.data + my_borders[0][0], tmp_field.data + my_borders[1][0]}};
+    // *my_borders_addr[1][0] = ALIVE;
+    // *my_borders_addr[1][1] = ALIVE;
+    // *my_borders_addr[0][0] = UNDEFINED;
+    // *my_borders_addr[0][1] = UNDEFINED;
+
+    // адреса соседских границ в памяти в обоих массивах
+    CellStatus *borders[2][2] = {{field->data   , field->data    + size - width},
+                                 {tmp_field.data, tmp_field.data + size - width}};
+    //  *(borders[1][0] + 3) = ALIVE;
+    //  *(borders[1][1] + 3) = ALIVE;
+    //  *(borders[0][0] + 3) = DEAD;
+    //  *(borders[0][1] + 3) = DEAD;
+    // Сообщаем соседям свои изначальные границы
+    for (size_t i = 0; i < 2; ++i) {
+        send_message(neighbours[i].socket, my_borders_addr[0][i], border_raw_size);
+    }
+    // receive_message(neighbours[0].socket, borders[0][0], border_raw_size);
+    // receive_message(neighbours[1].socket, borders[0][1], border_raw_size);
+    int new_index = 1;
+    int old_index = 0;
+
+    for (int i = 0; i < steps_count; ++i) {
+        // обновляем границы, считаем, рассылаем обратно соседям
+        for (size_t side = 0; side < 2; ++side) {
+            receive_message(neighbours[side].socket, borders[old_index][side], border_raw_size);
+            process_range(work_fields[old_index], work_fields[new_index], my_borders[side][0], my_borders[side][1]);
+            send_message(neighbours[side].socket, my_borders_addr[new_index][side], border_raw_size);
+        }
+
+        // обрабатываем серединку
+        process_range(work_fields[old_index], work_fields[new_index], my_borders[0][1], my_borders[1][0]);
+        printf("Step #%zu\n", i);
+        print_field(work_fields[new_index]);
+
+        new_index = 1 - new_index;
+        old_index = 1 - old_index;
+    }
+
+    // результат последнего поколения мог попасть в локальный массив,
+    // поэтому нужно переместить его в результирующий массив
+    if (old_index == 1) {
+        move_field(&tmp_field, field);
+    } else {
+        destroy_field(&tmp_field);
+    }
+}
+
 void run_slave(int port, char* master_addr_char) {
     printf("Slave started.\n");
 
@@ -139,8 +202,8 @@ void run_slave(int port, char* master_addr_char) {
     read(master_socket, &steps_count, sizeof(steps_count));
     read(master_socket, &height, sizeof(height));
     read(master_socket, &width, sizeof(width));
-    init_field(&my_field, height + 2, width, USE_NO_VALUE);  // + по одной строке на верхнего и нижнего соседа
-    read(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
+    init_field(&my_field, height + 2, width, USE_UNDEFINED);  // + по одной строке на верхнего и нижнего соседа
+    receive_message(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
     print_field(&my_field);
     printf("My ID=%zu(of %zu). Steps number %zu\n", my_id, threads_number, steps_count);
 
@@ -153,17 +216,22 @@ void run_slave(int port, char* master_addr_char) {
     connect_with_neighbours(neighbours, listen_socket, my_id, threads_number);
 
     // проверка связи
-    char msg[2][100];
-    sprintf(msg[0], "For %zu from %zu with love of TCP", (my_id + threads_number - 1) % threads_number, my_id);
-    sprintf(msg[1], "For %zu from %zu with love of TCP", (my_id + 1) % threads_number, my_id);
-    for (size_t i = 0; i < 2; ++i) {
-        send_message(neighbours[i].socket, msg[i], strlen(msg[i]) + 1);
-    }
-    char line[2][100];
-    for (size_t i = 0; i < 2; ++i) {
-        receive_message(neighbours[i].socket, line[i], strlen(msg[i]) + 1);
-        printf("%s\n", line[i]);
-    }
+    // char msg[2][100];
+    // sprintf(msg[0], "For %zu from %zu with love of TCP", (my_id + threads_number - 1) % threads_number, my_id);
+    // sprintf(msg[1], "For %zu from %zu with love of TCP", (my_id + 1) % threads_number, my_id);
+    // for (size_t i = 0; i < 2; ++i) {
+    //     send_message(neighbours[i].socket, msg[i], strlen(msg[i]) + 1);
+    // }
+    // char line[2][100];
+    // for (size_t i = 0; i < 2; ++i) {
+    //     receive_message(neighbours[i].socket, line[i], strlen(msg[i]) + 1);
+    //     printf("%s\n", line[i]);
+    // }
+
+    do_job(my_id, threads_number, neighbours, &my_field, steps_count);
+    print_field(&my_field);
+    // отправляем результат обратно
+    send_message(master_socket, my_field.data + width, sizeof(CellStatus) * height * width);
 
     close(listen_socket);
     close(master_socket);

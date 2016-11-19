@@ -19,7 +19,7 @@ typedef struct Slave {
     int socket;  // сокет, по которому мастер общается с рабочим
 } Slave;
 
-int send_message(int fd, char* text, size_t length);
-int receive_message(int fd, char* text, size_t length);
+int send_message(int fd, void* text, size_t length);
+int receive_message(int fd, void* text, size_t length);
 
 #endif /* socket_utils_h */

@@ -129,6 +129,19 @@ void scatter_tasks(Slave slaves[], GameField *field, size_t threads_number, size
     }
 }
 
+// Собирает результат из ответов рабочих.
+// Поле result должно быть проинициализировно, размеры должны совпадать с размерами результатов.
+void gather_result(GameField *result, Slave slaves[], size_t threads_number) {
+    size_t game_size = result->height * result->width;
+    size_t piece_height = result->height / threads_number;
+    size_t piece_size = piece_height * result->width;
+    for (size_t i = 0; i < threads_number; ++i) {
+        CellStatus *dest = &(result->data[i * piece_size]);
+        size_t actual_size = (i + 1 < threads_number) ? piece_size : (game_size - i * piece_size);
+        receive_message(slaves[i].socket, dest, actual_size * sizeof(CellStatus));
+    }
+}
+
 void run_master(int port, int argc, const char * argv[]) {
     printf("Master started. Port is %d!\n", port);
 
@@ -149,6 +162,11 @@ void run_master(int port, int argc, const char * argv[]) {
 
     scatter_tasks(slaves, &field, threads_number, steps_count);
     printf("Tasks have been scattered\n");
+
+    gather_result(&field, slaves, threads_number);
+    printf("Resut has been received:\n");
+    print_field(&field);
+
     close_all_sockets(slaves, threads_number);
     printf("Server terminated.\n");
 }
