@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "master.h"
 #include "../core/game.h"
@@ -152,20 +153,29 @@ void run_master(int port, int argc, const char * argv[]) {
         perror("To few processes");
         exit(EXIT_FAILURE);
     }
+    int transposed = 0;
     if (field.height < field.width) {
         transpose_field(&field);
+        transposed = 1;
     }
-    print_field(&field);
+    // print_field(&field);
     Slave slaves[threads_number];
     find_slaves(slaves, threads_number, port);
     printf("Slaves have been found\n");
 
+    time_t time_start, time_finish;
+    time(&time_start);
     scatter_tasks(slaves, &field, threads_number, steps_count);
-    printf("Tasks have been scattered\n");
-
     gather_result(&field, slaves, threads_number);
-    printf("Resut has been received:\n");
-    print_field(&field);
+
+    time(&time_finish);
+    printf("Time %ld\n", time_finish - time_start);
+    if (transposed == 1) {
+        // транспонируем обратно если нужно
+        transpose_field(&field);
+    }
+    printf("Resut has been written to file\n");
+    fprint_field("result", &field);
 
     close_all_sockets(slaves, threads_number);
     printf("Server terminated.\n");

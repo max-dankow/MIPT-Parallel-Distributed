@@ -105,7 +105,7 @@ void print_field(const GameField * field) {
     printf("\n");
 }
 
-void fprint_field(char* file_name, const GameField * field) {
+void fprint_field(const char* file_name, const GameField * field) {
     FILE *file = fopen(file_name, "w");
     size_t index = 0;
     fprintf(file, "%zu %zu\n", field->height, field->width);

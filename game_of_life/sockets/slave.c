@@ -10,7 +10,7 @@ void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id
     if (my_id % 2 == 0) {
         // В этом случае я сначала жду подключения. Сначала снизу, затем сверху.
         neighbours[1].socket = accept(listen_socket, NULL, NULL);
-        printf("First accept %d\n", neighbours[1].socket);
+        // printf("First accept %d\n", neighbours[1].socket);
         if (threads_number % 2 == 1) {
             if (my_id == 0) {
                 // В этом случае 0ой вместо ожидания верхнего должен подключиться к нему.
@@ -24,7 +24,7 @@ void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id
                     close(neighbours[1].socket);
                     exit(EXIT_FAILURE);
                 }
-                printf("EXTRA connect in OK\n");
+                // printf("EXTRA connect in OK\n");
             }
             if (my_id == threads_number - 1) {
                 // В этом случае последний получил сначала подкличение от верхнего, а нужно наоборот.
@@ -38,11 +38,11 @@ void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id
                     close(neighbours[1].socket);
                     exit(EXIT_FAILURE);
                 }
-                printf("EXTRA accept %d\n", neighbours[1].socket);
+                // printf("EXTRA accept %d\n", neighbours[1].socket);
             }
         } else {
             neighbours[0].socket = accept(listen_socket, NULL, NULL);
-            printf("Second accept %d\n", neighbours[0].socket);
+            // printf("Second accept %d\n", neighbours[0].socket);
         }
         if (neighbours[0].socket < 0 || neighbours[1].socket < 0) {
             perror("accept");
@@ -64,7 +64,7 @@ void connect_with_neighbours(Slave neighbours[], int listen_socket, size_t my_id
                 close(neighbours[1].socket);
                 exit(EXIT_FAILURE);
             }
-            printf("%zuth connect in OK\n", i);
+            // printf("%zuth connect in OK\n", i);
         }
     }
 }
@@ -116,8 +116,8 @@ void do_job(int my_id, int process_number, Slave neighbours[2], GameField *field
 
         // обрабатываем серединку
         process_range(work_fields[old_index], work_fields[new_index], my_borders[0][1], my_borders[1][0]);
-        printf("Step #%zu\n", i);
-        print_field(work_fields[new_index]);
+        // printf("Step #%zu\n", i);
+        // print_field(work_fields[new_index]);
 
         new_index = 1 - new_index;
         old_index = 1 - old_index;
@@ -189,8 +189,6 @@ void run_slave(int port, char* master_addr_char) {
 
     // узнаем наш действительный адрес, чтобы сообщить мастеру
     getsockname(listen_socket, (struct sockaddr *) &addr.addr, &addr.addr_size);
-    printf("port %d, %d, %d(AF = %d)\n", addr.addr.sin_port,
-        addr.addr.sin_addr.s_addr, addr.addr.sin_family, AF_INET);
     write(master_socket, &addr, sizeof(Address));
     printf("I've sent address to my master\n");
 
@@ -204,7 +202,7 @@ void run_slave(int port, char* master_addr_char) {
     read(master_socket, &width, sizeof(width));
     init_field(&my_field, height + 2, width, USE_UNDEFINED);  // + по одной строке на верхнего и нижнего соседа
     receive_message(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
-    print_field(&my_field);
+    // print_field(&my_field);
     printf("My ID=%zu(of %zu). Steps number %zu\n", my_id, threads_number, steps_count);
 
     // получаем адреса соседей
@@ -229,7 +227,7 @@ void run_slave(int port, char* master_addr_char) {
     // }
 
     do_job(my_id, threads_number, neighbours, &my_field, steps_count);
-    print_field(&my_field);
+    // print_field(&my_field);
     // отправляем результат обратно
     send_message(master_socket, my_field.data + width, sizeof(CellStatus) * height * width);
 
