@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <omp.h>
+#include <time.h>
 
 #include "../core/game.h"
 #include "../core/utils.h"
@@ -20,10 +21,11 @@ int main(int argc, const char* argv[]) {
     unsigned active_field_index = 0;
 
     // разделение на потоки и выполнение
-    double timeStart = omp_get_wtime();
+    time_t time_start, time_finish;
+    time(&time_start);
     #pragma omp parallel num_threads(threadNumber) shared(fields, stepsCount) firstprivate(active_field_index)
     {
-        for (int step = 0; step < stepsCount; ++step) {
+        for (int step = 0; step <= stepsCount; ++step) {
             #pragma omp for
             for (size_t row = 0; row < gameHeight; ++row) {
                 process_range(&fields[active_field_index],
@@ -31,12 +33,13 @@ int main(int argc, const char* argv[]) {
                               row * gameWidth, row * gameWidth + gameWidth);
             }  // неявная барьерная синхронизация
             active_field_index = 1 - active_field_index;
-            if (step + 1 == stepsCount) {
+            if (step == stepsCount) {
                 result = &fields[1 - active_field_index];
             }
         }
     }
-    double timeFinish = omp_get_wtime();
-    printf("Time %f\n", timeFinish - timeStart);
+    time(&time_finish);
+    printf("Time %ld\n", time_finish - time_start);
+    fprint_field("omp.out", result);
     return 0;
 }

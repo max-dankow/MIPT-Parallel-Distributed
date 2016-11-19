@@ -81,6 +81,7 @@ void gameOfLifeShared(int argc, const char * argv[]) {
     time(&time_finish);
     printf("Time %ld\n", time_finish - time_start);
     thread_barrier_destroy(&barrier);
+    fprint_field("basic.out", result);
 
     free(fields[0].data);
     free(fields[1].data);

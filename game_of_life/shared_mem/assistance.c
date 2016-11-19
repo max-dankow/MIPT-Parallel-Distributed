@@ -8,9 +8,9 @@ typedef struct Task {
     size_t next_end;
     unsigned steps_number;
     unsigned *assistCount;
-    GameField* fields;
+    GameField *fields;
     thread_barrier *barrier;
-    GameField** result;
+    GameField **result;
 } Task;
 
 static void* job(void *arguments) {
@@ -119,6 +119,8 @@ void gameOfLifeSharedAssist(int argc, const char * argv[]) {
     time(&time_finish);
     printf("Time %ld\n", time_finish - time_start);
     printf("Total assists %d (%f %%)\n", totalAssists, (float)(totalAssists) / (float)(game_size * steps_count) * 100);
+
+    fprint_field("assist.out", result);
 
     free(fields[0].data);
     free(fields[1].data);

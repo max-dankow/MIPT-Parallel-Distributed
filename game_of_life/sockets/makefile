@@ -7,4 +7,4 @@ $(TARGET): $(HEADERS) $(SOURCE)
 	gcc-6 -std=c99 $(SOURCE) -o $(TARGET) -Wall -D_BSD_SOURCE
 
 clean:
-	rm -rf *.o $(TARGET)
+	rm -rf *.o *.out $(TARGET)

@@ -7,4 +7,4 @@ $(TARGET): $(HEADERS) $(SOURCE)
 	mpic++ $(SOURCE) -o $(TARGET) -Wall
 
 clean:
-	rm -rf *.o $(TARGET)
+	rm -rf *.o *.out $(TARGET)

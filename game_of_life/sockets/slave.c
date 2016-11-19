@@ -74,7 +74,7 @@ void do_job(int my_id, int process_number, Slave neighbours[2], GameField *field
     size_t width = field->width;
     size_t border_raw_size = sizeof(CellStatus) * width;
     GameField tmp_field;
-    init_field(&tmp_field, field->height, field->width, USE_UNDEFINED);
+    init_field(&tmp_field, field->height, field->width, USE_NO_VALUE);
 
     GameField* work_fields[2] = {field, &tmp_field};  // рабочие поля, между которыми будем переключаться
 
@@ -200,7 +200,7 @@ void run_slave(int port, char* master_addr_char) {
     read(master_socket, &steps_count, sizeof(steps_count));
     read(master_socket, &height, sizeof(height));
     read(master_socket, &width, sizeof(width));
-    init_field(&my_field, height + 2, width, USE_UNDEFINED);  // + по одной строке на верхнего и нижнего соседа
+    init_field(&my_field, height + 2, width, USE_NO_VALUE);  // + по одной строке на верхнего и нижнего соседа
     receive_message(master_socket, &my_field.data[width], sizeof(CellStatus) * height * width);
     // print_field(&my_field);
     printf("My ID=%zu(of %zu). Steps number %zu\n", my_id, threads_number, steps_count);
@@ -213,24 +213,11 @@ void run_slave(int port, char* master_addr_char) {
     // устанавливаем соединение с соседями
     connect_with_neighbours(neighbours, listen_socket, my_id, threads_number);
 
-    // проверка связи
-    // char msg[2][100];
-    // sprintf(msg[0], "For %zu from %zu with love of TCP", (my_id + threads_number - 1) % threads_number, my_id);
-    // sprintf(msg[1], "For %zu from %zu with love of TCP", (my_id + 1) % threads_number, my_id);
-    // for (size_t i = 0; i < 2; ++i) {
-    //     send_message(neighbours[i].socket, msg[i], strlen(msg[i]) + 1);
-    // }
-    // char line[2][100];
-    // for (size_t i = 0; i < 2; ++i) {
-    //     receive_message(neighbours[i].socket, line[i], strlen(msg[i]) + 1);
-    //     printf("%s\n", line[i]);
-    // }
-
     do_job(my_id, threads_number, neighbours, &my_field, steps_count);
-    // print_field(&my_field);
     // отправляем результат обратно
     send_message(master_socket, my_field.data + width, sizeof(CellStatus) * height * width);
 
+    destroy_field(&my_field);
     close(listen_socket);
     close(master_socket);
     printf("My work is done!\n");

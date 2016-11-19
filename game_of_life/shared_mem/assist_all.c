@@ -124,6 +124,8 @@ void gameOfLifeSharedAssistAll(int argc, const char * argv[]) {
     printf("Time %ld\n", time_finish - time_start);
     printf("Total assists %d (%f %%)\n", totalAssists, (float)(totalAssists) / (float)(game_size * steps_count) * 100);
 
+    fprint_field("assist_all.out", result);
+
     free(fields[0].data);
     free(fields[1].data);
     thread_barrier_destroy(&barrier);

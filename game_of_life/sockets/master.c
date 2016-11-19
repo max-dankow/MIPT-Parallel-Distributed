@@ -8,30 +8,6 @@
 #include "../core/utils.h"
 #include "socket_utils.h"
 
-// int init_datagram_socket(int port) {
-//     // создаем сокет
-//     int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-//     if (socket_fd < 0) {
-//         perror("Can't create socket.");
-//         exit(EXIT_FAILURE);
-//     }
-//
-//     // настраиваем наш адрес
-//     struct sockaddr_in addr;
-//     bzero(&addr, sizeof(addr));
-//     addr.sin_family = AF_INET;
-//     addr.sin_port = htons(port);
-//     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-//     // связываение сокета
-//     if (bind(socket_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-//         perror("Bind");
-//         close(socket_fd);
-//         exit(EXIT_FAILURE);
-//     }
-//     return socket_fd;
-// }
-
-
 void close_all_sockets(Slave slaves[], size_t threads_number) {
     for (size_t i = 0; i < threads_number; ++i) {
         close(slaves[i].socket);
@@ -175,8 +151,9 @@ void run_master(int port, int argc, const char * argv[]) {
         transpose_field(&field);
     }
     printf("Resut has been written to file\n");
-    fprint_field("result", &field);
+    fprint_field("sockets.out", &field);
 
+    destroy_field(&field);
     close_all_sockets(slaves, threads_number);
     printf("Server terminated.\n");
 }

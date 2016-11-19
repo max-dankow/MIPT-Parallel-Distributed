@@ -6,8 +6,6 @@
 #include "../core/game.h"
 #include "../core/utils.h"
 
-// #define SHOW_FIELD
-
 using std::cout;
 using namespace MPI;
 
@@ -18,7 +16,7 @@ void doJob(int rank, int process_number, GameField *myField, int steps_count) {
     int myWidth = myField->width;
     int mySize = myHeigth * myWidth;
     GameField tmpField;
-    init_field(&tmpField, myField->height, myField->width, 0);
+    init_field(&tmpField, myField->height, myField->width, USE_NO_VALUE);
 
     std::vector<CellStatus> buffer(myWidth);  // буффер для приема данных
     GameField* workFields[2] = {myField, &tmpField};
@@ -138,19 +136,22 @@ void gameOfLifeMPI(int argc, const char * argv[]) {
     COMM_WORLD.Scatterv(initialField.data, counts.data(), displacements.data(), INT,
                         myField.data + gameWidth, counts[rank], INT, MAIN_RANK);
 
-    double startTime = Wtime();
+    time_t time_start, time_finish;
+    time(&time_start);
     doJob(rank, process_number, &myField, stepsCount);
-    double endTime = Wtime();
+    time(&time_finish);
     if (rank == MAIN_RANK) {
-        cout << endTime - startTime << std::endl;
+        cout << "Time " << time_finish - time_start << std::endl;
     }
     // Собираем результат
     COMM_WORLD.Gatherv(myField.data + gameWidth, counts[rank], INT,
                        initialField.data, counts.data(), displacements.data(), INT, MAIN_RANK);
-
+    if (rank == MAIN_RANK) {
+        fprint_field("mpi.out", &initialField);
+    }
     // подчищаем память
-    //destroy_field(&initialField);
-    //destroy_field(&myField);
+    destroy_field(&initialField);
+    destroy_field(&myField);
     Finalize();
 }
 
