@@ -1,0 +1,6 @@
+#! /bin/bash
+
+input_dir=$1
+output=$2
+
+cat $input_dir/* | python3 mapper.py | sort | python3 reducer.py > $output
