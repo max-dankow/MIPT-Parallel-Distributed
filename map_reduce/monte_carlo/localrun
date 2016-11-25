@@ -1,0 +1,9 @@
+#! /bin/bash
+
+input_dir="data"
+output="out"
+
+cat $input_dir/* \
+| python3 mapper.py \
+| python3 reducer.py \
+> $output
