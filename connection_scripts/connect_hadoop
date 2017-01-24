@@ -1,0 +1,3 @@
+#!/bin/bash
+#ssh s49504@remote.vdi.mipt.ru -p 51800 -X -C
+ssh s49504@virtual-client.atp-fivt.org -X -C

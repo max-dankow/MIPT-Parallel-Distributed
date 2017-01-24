@@ -1,0 +1,2 @@
+#!/bin/bash
+ssh s49504@remote.vdi.mipt.ru -p 60001
