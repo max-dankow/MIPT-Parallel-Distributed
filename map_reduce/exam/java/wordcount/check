@@ -1,0 +1,16 @@
+#! /usr/bin/env bash
+
+reducer_num=8
+out_dir='out'
+jar_file='jar/WordCount.jar'
+class_name='ru.mipt.examples.WordCount'
+input='/data/wiki/en_articles_part'
+
+# Check results
+echo "Check RESULTS"
+
+for result_file in `hadoop fs -ls $out_dir | awk '{print $8}' | tail -$reducer_num`
+do
+    hadoop fs -cat $result_file | head
+done
+# hdfs dfs -cat out/part-r-00002 | tail -n 10

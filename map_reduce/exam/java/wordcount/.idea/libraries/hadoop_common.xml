@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="hadoop-common">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../usr/lib/hadoop/hadoop-common.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../usr/lib/hadoop-mapreduce/hadoop-mapreduce-client-core.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
