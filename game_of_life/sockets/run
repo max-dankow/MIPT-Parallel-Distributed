@@ -1,7 +1,7 @@
 #! /bin/bash
 np=$2
 
-./game_sock -m $1 44 -f "../input2.txt" -np $np &
+./game_sock -m $1 100 -f "../input.txt" -np $np &
 sleep 5
 for i in $(seq 1 $np); do
   echo $i;

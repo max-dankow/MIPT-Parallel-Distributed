@@ -1,0 +1,73 @@
+Конспект семинара по распределенкам
+(после всех команд hive нужно ставить ";")
+
+hive> show
+hive> create database adral - это не сработает, потому что доступа нет
+hive> create database adral location "/user/adral/hive_warehouse" - норм
+hive> show databases like "%a"
+
+hdfs dfs -ls /data/wiki/en_articles_part
+hdfs dfs -text /data/wiki/en_articles_part/articles-part - смотрим колонки
+
+Таблицы бывают двух видов - к которым есть доступ на изменения и к которым нет (managed && external)
+hive> create table wiki_sample (article_id INT, article STRING) location "/data/wiki/en_articles_part/"
+
+hdfs dfs -get /data/wiki/en_articles_part/articles-part - резервная копия
+
+hive> SELECT * FROM wiki_sample LIMIT 10; - не работает, данные не прочитались
+hive> show table wiki_sample - что-то странное
+hive> describe wiki_sample
+hive> drop table wiki_sample
+- проблема с нераспарсенными табуляциями
+
+hive> create table wiki_sample (article_id INT, article STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t' LOCATION "/data/wiki/en_articles_part/"
+hive> SELECT * FROM wiki_sample LIMIT 10; ok =)
+hive> SELECT SUM(article_id) FROM wiki_sample - в одну строчку посчитали сумму ид статей
+hive> desc function sum - kind of help
+hive> SELECT split(article, ' ') FROM wiki_sample LIMIT 10
+hive> SELECT split(article, ' ')[0] FROM wiki_sample LIMIT 10; - вывели первые слова статей (названия)
+hive> SELECT substr(split(article, ' ')[0], 0, 1) first_letter FROM wiki_sample LIMIT 10; - вывели первые слова статей (названия)
+hive> SELECT first_letter, COUNT(1) FROM (SELECT substr(split(article, ' ')[0], 0, 1) first_letter FROM wiki_sample) tmp_table GROUP_BY first_letter; - вывели первые слова статей (названия)
+
+В файле
+USE adral
+
+SELECT first_letter, COUNT(1)
+FROM (
+SELECT substr(split(article, ' ')[0], 0, 1) first_letter
+FROM wiki_sample
+) tmp_table
+GROUP_BY first_letter;
+SORT BY first_letter;
+ORDER BY first_letter;
+
+USE adral
+
+SELECT first_letter, COUNT(1)
+FROM (
+SELECT TRANSFORM(article)
+USING 'cut -c1' as first_letter
+# 'python my_mapper.py'
+# Драль сказал что-то про распределенный кеш, который раскидывается на все машины
+FROM wiki_sample
+LIMIT 10
+) tmp_table
+GROUP_BY first_letter;
+SORT BY first_letter;
+ORDER BY first_letter;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+hadoop fs -put
