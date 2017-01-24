@@ -1,0 +1,16 @@
+#! /bin/bash
+
+mapper="python $PWD/mapper.py"
+reducer="python $PWD/reducer.py"
+input='streaming/data'
+output='streaming/out'
+
+# Remove previous results
+hadoop fs -rm -r -skipTrash $out_dir* _tmp*
+# Run
+hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming.jar \
+    -D mapred.map.tasks=4 \
+    -mapper "$mapper" \
+    -reducer "$reducer" \
+    -input  $input \
+    -output $output
